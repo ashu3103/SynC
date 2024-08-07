@@ -4,31 +4,38 @@ from constants import *
 from database import *
 from log import *
 
-def manipulateDB(path, dbData, mimeType, parent_inode):
+def manipulateDB(path: str, fileDict: dict, mimeType: str, parent_inode: str):
     stat_info = os.stat(path)
-    for record in dbData:
-        if ( stat_info.st_ino==record[DBSCHEME['inode']] and stat_info.st_atime!=record[DBSCHEME['last_modified']] ):
-            # Update the records
-            updateDataByInode(tuple=(str(stat_info.st_ino), parent_inode, "", "", path.split('/')[-1], mimeType, path, stat_info.st_ctime, 'modify'), inode=str(stat_info.st_ino))
-            return
-        
-    # # Create new records
-    insertData(tuple=(str(stat_info.st_ino), parent_inode, "", "", path.split('/')[-1], mimeType, path, stat_info.st_ctime, 'create'))
+    # Create new records
+    if (not fileDict.get(str(stat_info.st_ino))):
+        insertData(tuple=(str(stat_info.st_ino), parent_inode, "", "", path.split('/')[-1], mimeType, path, stat_info.st_ctime, 'create'))
+        return
+    # Update the changed record
+    if (fileDict[str(stat_info.st_ino)].getLastModified != stat_info.st_ctime):
+        logger.info(f'The inode of file changed is: {stat_info.st_ino}')
+        updateDataByInode(tuple=(str(stat_info.st_ino), parent_inode, "", "", path.split('/')[-1], mimeType, path, stat_info.st_ctime, 'modify', str(stat_info.st_ino)))
+        return
 
-def traceDirectory(rootPath, dbData, parent_inode):
-    manipulateDB(rootPath, dbData, "", parent_inode)
+def traceDirectory(rootPath, fileDict, parent_inode):
+    manipulateDB(rootPath, fileDict, "", parent_inode)
     
     with os.scandir(rootPath) as itr:
         for entry in itr:
             if entry.name.startswith("."):
                 continue
             if(entry.is_dir()):
-                traceDirectory(entry.path, dbData, str(os.stat(rootPath).st_ino))
+                traceDirectory(entry.path, fileDict, str(os.stat(rootPath).st_ino))
                 continue
 
             # Operations for file
-            manipulateDB(entry.path, dbData, str(os.stat(rootPath).st_ino))
+            manipulateDB(entry.path, fileDict, "", str(os.stat(rootPath).st_ino))
 
+def createInodemap(dbData) -> dict:
+    fileDict = {}
+    for record in dbData:
+        fileDict[record[0]] = fileSchema(record)
+    
+    return fileDict
 
 if __name__ == "__main__":
     # Initialize logger
@@ -49,9 +56,10 @@ if __name__ == "__main__":
     
     # Check which one of the inodes are changed
     dbData = fetchAllFileData()
+    fileDict = createInodemap(dbData)
+    traceDirectory(trackDirectory, fileDict, "")
+    dbData = fetchAllFileData()
     print(dbData)
-
-    traceDirectory(trackDirectory, dbData, "")
 
 
 

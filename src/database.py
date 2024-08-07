@@ -1,6 +1,38 @@
 import sqlite3
 from constants import *
 
+# DBSCHEME = {
+#     "inode": 1,
+#     "parent_inode": 2,
+#     "id": 3,
+#     "parent_id": 4,
+#     "name": 5,
+#     "mimeType": 6,
+#     "path": 7,
+#     "created_at": 8, 
+#     "last_modified": 9,
+#     "status": 10
+# }
+
+class fileSchema:
+    def __init__(self, fileList) -> None:
+        self.inode = fileList[0]
+        self.parent_inode = fileList[1]
+        self.id = fileList[2]
+        self.parent_id = fileList[3]
+        self.name = fileList[4]
+        self.mimeType = fileList[5]
+        self.path = fileList[6]
+        self.created_at = fileList[7]
+        self.last_modified = fileList[8]
+        self.status = fileList[9]
+
+    def getInode(self) -> str:
+        return self.inode
+    
+    def getLastModified(self) -> str:
+        return self.last_modified
+
 def initializeDB():
     try :
         dbconn = sqlite3.connect(DATABASE_PATH)
@@ -51,7 +83,7 @@ def updateDataByInode(tuple):
     dbcurs = dbconn.cursor()
     dbcurs.execute("""
             UPDATE file SET inode = ?, parent_id = ?, id = ?, parent_id = ?,
-            name = ?, mimeType = ?, path = ?, last_modified = ?, status = ? WHERE id = ? 
+            name = ?, mimeType = ?, path = ?, last_modified = ?, status = ? WHERE inode = ? 
             """, tuple)
     dbconn.commit()
     dbconn.close()
