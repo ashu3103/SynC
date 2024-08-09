@@ -3,6 +3,8 @@ import os
 from constants import *
 from database import *
 from log import *
+from mimetype import *
+
 
 def manipulateDB(path: str, fileDict: dict, mimeType: str, parent_inode: str):
     stat_info = os.stat(path)
@@ -11,13 +13,13 @@ def manipulateDB(path: str, fileDict: dict, mimeType: str, parent_inode: str):
         insertData(tuple=(str(stat_info.st_ino), parent_inode, "", "", path.split('/')[-1], mimeType, path, stat_info.st_ctime, 'create'))
         return
     # Update the changed record
-    if (fileDict[str(stat_info.st_ino)].getLastModified != stat_info.st_ctime):
+    if (fileDict[str(stat_info.st_ino)].getLastModified() != stat_info.st_ctime):
         logger.info(f'The inode of file changed is: {stat_info.st_ino}')
         updateDataByInode(tuple=(str(stat_info.st_ino), parent_inode, "", "", path.split('/')[-1], mimeType, path, stat_info.st_ctime, 'modify', str(stat_info.st_ino)))
         return
 
 def traceDirectory(rootPath, fileDict, parent_inode):
-    manipulateDB(rootPath, fileDict, "", parent_inode)
+    manipulateDB(rootPath, fileDict, "application/vnd.google-apps.folder", parent_inode)
     
     with os.scandir(rootPath) as itr:
         for entry in itr:
@@ -60,6 +62,3 @@ if __name__ == "__main__":
     traceDirectory(trackDirectory, fileDict, "")
     dbData = fetchAllFileData()
     print(dbData)
-
-
-
