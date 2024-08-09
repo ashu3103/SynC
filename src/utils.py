@@ -10,7 +10,7 @@ def createInodeMap(dbData: list) -> dict:
 
     return fileDict
 
-def buildGraphAndInodeMap(dbData: list, print=False) -> list:
+def buildGraphAndInodeMap(dbData: list) -> list:
     # O(2*n)
     G = {}
     fileDict = {}
@@ -27,9 +27,6 @@ def buildGraphAndInodeMap(dbData: list, print=False) -> list:
             continue
         print(f'{record[DBSCHEME["inode"]]} - {record[DBSCHEME["parent_inode"]]} - {record[DBSCHEME["name"]]}')
         G[record[DBSCHEME['parent_inode']]].append(record[DBSCHEME['inode']])
-
-    if (print):
-        traverseInodeGraph(root, G)
 
     return [fileDict, [root, G]]
 
