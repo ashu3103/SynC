@@ -32,6 +32,27 @@ class fileSchema:
     
     def getLastModified(self) -> str:
         return self.last_modified
+    
+    def getStatus(self) -> str:
+        return self.status
+    
+    def getPath(self) -> str:
+        return self.path
+
+    def getMime(self) -> str:
+        return self.mimeType
+
+    def getName(self) -> str:
+        return self.name
+    
+    def getParentId(self) -> str:
+        return self.parent_id
+
+    def setId(self, id: str):
+        self.id = id
+    
+    def setParentId(self, parentId: str):
+        self.parent_id = parentId
 
 def initializeDB():
     try :
@@ -46,9 +67,9 @@ def initializeDB():
         dbcurs.execute("""
         CREATE TABLE file (
                 inode VARCHAR(36) NOT NULL, 
-                parent_inode VARCHAR(36) NOT NULL,
+                parent_inode VARCHAR(36),
                 id VARCHAR(36) NOT NULL, 
-                parent_id VARCHAR(36) DEFAULT 'root' NOT NULL,
+                parent_id VARCHAR(36) DEFAULT NULL,
                 name VARCHAR(100) NOT NULL, 
                 mimeType VARCHAR(36)  DEFAUlT 'application/text' NOT NULL,
                 path VARCHAR(100) NOT NULL, 
@@ -87,4 +108,13 @@ def updateDataByInode(tuple):
             """, tuple)
     dbconn.commit()
     dbconn.close()
-    
+
+def updateIdByInode(tuple):
+    dbconn = sqlite3.connect(DATABASE_PATH)
+    dbcurs = dbconn.cursor()
+    dbcurs.execute("""
+            UPDATE file SET id = ?, parent_id = ?,
+            status = ? WHERE inode = ? 
+            """, tuple)
+    dbconn.commit()
+    dbconn.close()
