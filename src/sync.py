@@ -4,22 +4,25 @@ from constants import *
 from database import *
 from log import *
 from mimetype import *
+from utils import *
+from gdata import *
 
 
 def manipulateDB(path: str, fileDict: dict, mimeType: str, parent_inode: str):
     stat_info = os.stat(path)
     # Create new records
     if (not fileDict.get(str(stat_info.st_ino))):
+        logger.info(f'Create new file {path} with inode {stat_info.st_ino}')
         insertData(tuple=(str(stat_info.st_ino), parent_inode, "", "", path.split('/')[-1], mimeType, path, stat_info.st_ctime, 'create'))
         return
     # Update the changed record
     if (fileDict[str(stat_info.st_ino)].getLastModified() != stat_info.st_ctime):
-        logger.info(f'The inode of file changed is: {stat_info.st_ino}')
+        logger.info(f'Modify file {path} with inode {stat_info.st_ino}')
         updateDataByInode(tuple=(str(stat_info.st_ino), parent_inode, "", "", path.split('/')[-1], mimeType, path, stat_info.st_ctime, 'modify', str(stat_info.st_ino)))
         return
 
 def traceDirectory(rootPath, fileDict, parent_inode):
-    manipulateDB(rootPath, fileDict, "application/vnd.google-apps.folder", parent_inode)
+    manipulateDB(rootPath, fileDict, getMimetype(rootPath), parent_inode)
     
     with os.scandir(rootPath) as itr:
         for entry in itr:
@@ -30,14 +33,7 @@ def traceDirectory(rootPath, fileDict, parent_inode):
                 continue
 
             # Operations for file
-            manipulateDB(entry.path, fileDict, "", str(os.stat(rootPath).st_ino))
-
-def createInodemap(dbData) -> dict:
-    fileDict = {}
-    for record in dbData:
-        fileDict[record[0]] = fileSchema(record)
-    
-    return fileDict
+            manipulateDB(entry.path, fileDict, getMimetype(entry.path), str(os.stat(rootPath).st_ino))
 
 if __name__ == "__main__":
     # Initialize logger
@@ -57,8 +53,20 @@ if __name__ == "__main__":
         exit(1)
     
     # Check which one of the inodes are changed
+    dbData = fetchAllFileData() # can be cached
+    fileDict = createInodeMap(dbData)
+    logger.info("Successfully created file dictionary")
+
+    traceDirectory(trackDirectory, fileDict, str(os.stat(trackDirectory).st_ino))
     dbData = fetchAllFileData()
-    fileDict = createInodemap(dbData)
-    traceDirectory(trackDirectory, fileDict, "")
+
+    print(dbData)
+
+    # Sync Data
+    logger.info("Syncing data")
+    g = GSession()
+    g.initializeSession(dbData)
+    g.syncDrive(g.root)
+
     dbData = fetchAllFileData()
     print(dbData)
